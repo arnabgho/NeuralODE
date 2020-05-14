@@ -19,9 +19,13 @@ torch.backends.cudnn.benchmark = True
 
 SETTINGS.CAPTURE_MODE = 'no'
 
-ex = Experiment('odenet_mnist_randtime',
+#ex = Experiment('odenet_mnist_randtime',
+#                ingredients=[model_ingredient, data_ingredient])
+#SAVE_DIR = 'runs/ODEnetRandTimeMnist'
+ex = Experiment('odenet_mnist_skipstep',
                 ingredients=[model_ingredient, data_ingredient])
-SAVE_DIR = 'runs/ODEnetRandTimeMnist'
+SAVE_DIR = 'runs/ODEnetSkipStepMnist'
+
 ex.observers.append(FileStorageObserver.create(SAVE_DIR))
 ex.observers.append(VisdomObserver())
 

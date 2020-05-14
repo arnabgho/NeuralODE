@@ -3,7 +3,7 @@
 import torch
 from torch import nn
 from sacred import Ingredient
-from modules import ODEnetRandTime
+from modules import ODEnetRandTime,ODEnetSkipStep
 
 model_ingredient = Ingredient('model')
 
@@ -32,7 +32,8 @@ def make_model(in_channels,
                device,
                _log):
     """Create ODEnet model from config"""
-    ode_model = ODEnetRandTime(in_channels,
+    #ode_model = ODEnetRandTime(in_channels,
+    ode_model = ODEnetSkipStep(in_channels,
                            state_channels,
                            state_size,
                            output_size=output_size,

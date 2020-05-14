@@ -40,12 +40,13 @@ ex.observers.append(FileStorageObserver.create(SAVE_DIR))
 @ex.config
 def input_config():
     """Parameters for sampling using the given model"""
-    run_dir = 'runs/ODEMnistClassification/17'
+    #run_dir = 'runs/ODEMnistClassification/17'
+    run_dir = 'runs/ODEnetRandTimeMnist/1'
     epoch = 'latest'
     device = 'cpu'
     epsilon = 0.3 # epsilon for attack
     attack = 'fgsm' # type of attack, currently: [fgsm, pgd]
-    min_end_time = 10
+    min_end_time = 100
     max_end_time = 100
     tol = 1e-3
     batches = -1

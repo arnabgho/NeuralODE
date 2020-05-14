@@ -35,7 +35,7 @@ def input_config():
     attack = 'fgsm' # type of attack, currently: [fgsm]
     end_time_start = 0.01
     end_time_end = 10 #1000
-    num_times = 10 #1000
+    num_times = 20 #1000
     tol = 1e-3
     batches = -1
 
@@ -97,7 +97,7 @@ def main(run_dir,
         model.odeblock.min_end_time = end_time
         model.odeblock.max_end_time = end_time
         model.odeblock.t = torch.tensor([0, end_time]).float()
-        test_loss, test_acc = validate(model, adv_test_loader)
+        test_loss, test_acc = validate(model, test_loader)
         ex.log_scalar("test_loss", test_loss)
         ex.log_scalar("test_acc", test_acc)
         ex.log_scalar("end_time", end_time)

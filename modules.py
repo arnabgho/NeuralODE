@@ -3,6 +3,7 @@
 import torch
 from torch import nn
 from torchdiffeq import odeint_adjoint as odeint
+from torchdiffeq import odeint_adjoint_stochastic_end_v3
 
 # %%
 ACTS = {
@@ -257,7 +258,9 @@ class ODEnet(nn.Module):
 
 # %%
 
-class ODEBlockRandTime(nn.Module):
+
+
+class ODEBlockSkipStep(nn.Module):
     """Wraps an odefunc into a single module. The odefunc must have nfe
     (number of function evaluations) attribute. Each forward call has
     integration time from 0 to a uniform random time between min_end_time and
@@ -293,7 +296,7 @@ class ODEBlockRandTime(nn.Module):
                  rtol=1e-3, atol=1e-3):
         super().__init__()
         self.odefunc = odefunc
-        self.t = torch.tensor([0, 1]).float()
+        self.t = torch.tensor([0, min_end_time]).float()
         self.outputs = None
         self.min_end_time = min_end_time
         self.max_end_time = max_end_time
@@ -302,14 +305,11 @@ class ODEBlockRandTime(nn.Module):
 
     def forward(self, x, t=None):
         if t is None:
-            end_time = torch.rand(1)*(self.max_end_time - self.min_end_time)
-            end_time += self.min_end_time
-            self.t = torch.tensor([0, end_time.item()]).float()
             times = self.t
         else:
             self.t = t
             times = t
-        self.outputs = odeint(self.odefunc,
+        self.outputs = odeint_adjoint_stochastic_end_v3(self.odefunc,
                               x,
                               times,
                               rtol=self.rtol,
@@ -338,6 +338,75 @@ class ODEBlockRandTime(nn.Module):
 #         odeblock(test_inp)
 #         print(odeblock.t, odeblock.odefunc.nfe)
 # # %%
+
+class ODEnetSkipStep(nn.Module):
+    """ODE net for classifying images.
+
+    Performs one downsampling conv + fractional max pool. Then applies the ode
+    network with random end times, followed by a final fully connected layer
+    after flattening.
+
+    Parameters
+    ----------
+    in_channels : int
+        Number of channels in the input image.
+
+    state_channels : int
+        Number of channels in the state of the ODE. Output channels of the first
+        downsampling conv.
+
+    state_size : int
+        Height(=width) of the state of ODE. Output size of first downsampling.
+
+    output_size : int
+        Number of output classes (the default is 10).
+
+    act : string
+        Activation for the odefunc. (relu, sigmoid or tanh) (the default is 'relu').
+
+    min_end_time : float
+        Minimum value of the end time of integration. (default is 1.0)
+
+    max_end_time : float
+        Maximum value of the end time of integration. (default is 10.0)
+
+    tol : float
+        Relative and absolute tolerance for ODE evaluations (the default is 1e-3).
+
+    """
+    def __init__(self,
+                 in_channels,
+                 state_channels,
+                 state_size,
+                 output_size=10,
+                 act='relu',
+                 min_end_time=1,
+                 max_end_time=10,
+                 tol=1e-3):
+        super().__init__()
+        self.conv1 = nn.Conv2d(in_channels, state_channels, 3, padding=1)
+        self.norm1 = nn.BatchNorm2d(state_channels)
+        self.pool = nn.FractionalMaxPool2d(2, output_size=state_size)
+        self.odefunc = ODEfunc(state_channels, act=act)
+        self.odeblock = ODEBlockSkipStep(self.odefunc,
+                                         min_end_time=min_end_time,
+                                         max_end_time=max_end_time,
+                                         rtol=tol,
+                                         atol=tol)
+        self.fc = nn.Linear(state_size*state_size*state_channels,
+                            output_size)
+
+    def forward(self, x, t=None):
+        out = self.conv1(x)
+        out = self.norm1(out)
+        out = self.pool(out)
+        out = self.odeblock(out, t)
+        out = out.view(out.shape[0], -1)
+        out = self.fc(out)
+        return out
+
+
+
 
 class ODEnetRandTime(nn.Module):
     """ODE net for classifying images.
